@@ -48,14 +48,14 @@ def gps_summaries(traj,tz_str,option,places_of_interest=None,save_log=False,thre
             if len(lat) == 0:
                 lat.append(row[1])
                 lon.append(row[2])
-            elif np.min(great_circle_dist(row[1], row[2], np.array(lat), np.array(lon))) > 500:
+            elif np.min(great_circle_dist(row[1], row[2], np.array(lat), np.array(lon))) > 1000:
                 lat.append(row[1])
                 lon.append(row[2])
 
         q = "[out:json];\n("
 
         for i in range(len(lat)):
-            bbox = boundingBox(lat[i], lon[i], 500)
+            bbox = boundingBox(lat[i], lon[i], 1000)
 
             q += "\n\tnode" + str(bbox) + "['leisure'];"
             q += "\n\tway" + str(bbox) + "['leisure'];"
@@ -255,37 +255,37 @@ def gps_summaries(traj,tz_str,option,places_of_interest=None,save_log=False,thre
                             if place in ids.keys():
                                 for element_id in ids[place]:
                                     if len(locations[element_id]) == 1:
-                                        if great_circle_dist(row.lat, row.lon, locations[element_id][0][0], locations[element_id][0][1]) < 7.5:
-                                            all_place_times_temp[j] += row.t/60
+                                        if great_circle_dist(row[0], row[1], locations[element_id][0][0], locations[element_id][0][1]) < 7.5:
+                                            all_place_times_temp[j] += row[2]/60
                                             add_to_other = False
                                             break
                                     elif len(locations[element_id]) >= 3:
                                         polygon = Polygon(locations[element_id])
-                                        point = Point(row.lat, row.lon)
+                                        point = Point(row[0], row[1])
                                         if polygon.contains(point):
-                                            all_place_times_temp[j] += row.t/60
+                                            all_place_times_temp[j] += row[2]/60
                                             add_to_other = False
                                             break
 
                         # in case of pause not in places of interest
                         if add_to_other:
-                            all_place_times_temp[-1] += row.t/60
+                            all_place_times_temp[-1] += row[2]/60
 
                     if save_log:
                         if threshold is None:
                             threshold = 60
                             sys.stdout.write("threshold parameter set to None, automatically converted to 60min." + '\n')
-                        if row.t >= threshold:
+                        if row[2] >= threshold:
                             for index in range(len(locations.keys())):
                                 element_id = list(locations.keys())[index]
                                 values = list(locations.values())[index]
 
                                 if len(values) == 1:
-                                    if great_circle_dist(row.lat, row.lon, values[0][0], values[0][1]) < 7.5:
+                                    if great_circle_dist(row[0], row[1], values[0][0], values[0][1]) < 7.5:
                                         log_tags_temp.append(tags[element_id])
                                 elif len(values) >= 3:
                                     polygon = Polygon(values)
-                                    point = Point(row.lat, row.lon)
+                                    point = Point(row[0], row[1])
                                     if polygon.contains(point):
                                         log_tags_temp.append(tags[element_id])
 
@@ -374,32 +374,34 @@ def gps_summaries(traj,tz_str,option,places_of_interest=None,save_log=False,thre
                         log_tags[str(day)+'/'+str(month)+'/'+str(year)] = log_tags_temp
         summary_stats = pd.DataFrame(np.array(summary_stats))
         if places_of_interest is None:
-            places_of_interest = []
+            places_of_interest2 = []
         else:
-            places_of_interest.append("other")
+            places_of_interest2 = places_of_interest.copy()
+            places_of_interest2.append("other")
         if option == "hourly":
             summary_stats.columns = ["year","month","day","hour","obs_duration","home_time","dist_traveled","max_dist_home",
                                      "total_flight_time","av_flight_length","sd_flight_length","av_flight_duration","sd_flight_duration",
-                                     "total_pause_time","av_pause_duration","sd_pause_duration"] + places_of_interest
+                                     "total_pause_time","av_pause_duration","sd_pause_duration"] + places_of_interest2
         if option == "daily":
             summary_stats.columns = ["year","month","day","obs_duration","obs_day","obs_night","home_time","dist_traveled","max_dist_home",
                                      "radius","diameter","num_sig_places","entropy",
                                      "total_flight_time","av_flight_length","sd_flight_length","av_flight_duration","sd_flight_duration",
-                                     "total_pause_time","av_pause_duration","sd_pause_duration"] + places_of_interest
+                                     "total_pause_time","av_pause_duration","sd_pause_duration"] + places_of_interest2
     else:
         if places_of_interest is None:
-            places_of_interest = []
+            places_of_interest2 = []
         else:
-            places_of_interest.append("other")
+            places_of_interest2 = places_of_interest.copy()
+            places_of_interest2.append("other")
         if option == "hourly":
             summary_stats = pd.DataFrame(columns=["year","month","day","hour","obs_duration","home_time","dist_traveled","max_dist_home",
                                      "total_flight_time","av_flight_length","sd_flight_length","av_flight_duration","sd_flight_duration",
-                                     "total_pause_time","av_pause_duration","sd_pause_duration"] + places_of_interest)
+                                     "total_pause_time","av_pause_duration","sd_pause_duration"] + places_of_interest2)
         if option == "daily":
             summary_stats = pd.DataFrame(columns=["year","month","day","obs_duration","obs_day","obs_night","home_time","dist_traveled","max_dist_home",
                                      "radius","diameter","num_sig_places","entropy",
                                      "total_flight_time","av_flight_length","sd_flight_length","av_flight_duration","sd_flight_duration",
-                                     "total_pause_time","av_pause_duration","sd_pause_duration"] + places_of_interest)
+                                     "total_pause_time","av_pause_duration","sd_pause_duration"] + places_of_interest2)
 
     if split_day_night:
         summary_stats_datetime = summary_stats[::2].reset_index(drop=True)
