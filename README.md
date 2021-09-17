@@ -40,7 +40,7 @@ pip install git+https://github.com/onnela-lab/forest
 Currently, all imports from `forest` must be explicit.  For the below example you need to import:
 ```
 from forest.bonsai.simulate_log_data import sim_log_data
-from forest.bonsai.simulate_gps_data import sim_GPS_data
+from forest.bonsai.simulate_gps_data import sim_gps_data
 from forest.jasmine.traj2stats import gps_stats_main
 from forest.willow.log_stats import log_stats_main
 ```
@@ -73,7 +73,7 @@ p = 0.8 # Length off-cycle / (length off-cycle + length on-cycle)
 api_key = "api key of open route service here"
 # optional directory of json file, containing attributes of each person to generate
 attributes_dir = "forest/bonsai/attributes.json"
-sim_GPS_data(N, location, start_date, end_date, cycle, p, api_key, path_to_synthetic_gps_data, attributes_dir)
+sim_gps_data(N, location, start_date, end_date, cycle, p, api_key, path_to_synthetic_gps_data, attributes_dir)
 
 # 2. Specify parameters for imputation 
 # See https://github.com/onnela-lab/forest/wiki/Jasmine-documentation#input for details
