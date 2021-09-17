@@ -22,8 +22,7 @@ R = 6.371 * 10 ** 6
 
 
 def get_path(
-    lat1: float, lon1: float, lat2: float, lon2: float,
-    transport: str, api_key: str
+    lat1: float, lon1: float, lat2: float, lon2: float, transport: str, api_key: str
 ) -> tuple[np.ndarray, float]:
     """
     This function takes 2 sets of coordinates and
@@ -45,8 +44,8 @@ def get_path(
     if great_circle_dist(lat1, lon1, lat2, lon2) < 250:
         return (
             np.array([[lon1, lat1], [lon2, lat2]]),
-            great_circle_dist(lat1, lon1, lat2, lon2)
-            )
+            great_circle_dist(lat1, lon1, lat2, lon2),
+        )
 
     if transport in ("car", "bus"):
         transport = "driving-car"
@@ -65,9 +64,7 @@ def get_path(
     for try_no in range(3):
 
         call = requests.get(
-            api_str.format(
-                transport, api_key, lon1, lat1, lon2, lat2
-            ),
+            api_str.format(transport, api_key, lon1, lat1, lon2, lat2),
             headers=headers,
             timeout=90,
         )
@@ -94,10 +91,7 @@ def get_path(
     if path_coordinates[-1] != [lon2, lat2]:
         path_coordinates[-1] = [lon2, lat2]
 
-    return (
-        np.array(path_coordinates),
-        great_circle_dist(lat1, lon1, lat2, lon2)
-        )
+    return (np.array(path_coordinates), great_circle_dist(lat1, lon1, lat2, lon2))
 
 
 def get_basic_path(path: np.ndarray, transport: str) -> np.ndarray:
@@ -112,9 +106,7 @@ def get_basic_path(path: np.ndarray, transport: str) -> np.ndarray:
         subset of original path that represents the flight
     """
 
-    distance = great_circle_dist(
-        path[0][1], path[0][0], path[-1][1], path[-1][0]
-        )
+    distance = great_circle_dist(path[0][1], path[0][0], path[-1][1], path[-1][0])
 
     if transport in ["foot", "bicycle"]:
         length = 2 + distance // 200
@@ -164,9 +156,7 @@ class Person:
     This class represents a person whose trajectories we want to simulate.
     """
 
-    def __init__(
-        self, house_address: tuple, attributes: list, all_nodes: dict
-    ):
+    def __init__(self, house_address: tuple, attributes: list, all_nodes: dict):
         """
         This function sets the basic attributes and information
         to be used of the person.\n
@@ -205,9 +195,7 @@ class Person:
         self.trips = {}
 
         # define place of employment
-        self.house_area = bounding_box(
-            house_address[0], house_address[1], 2000
-            )
+        self.house_area = bounding_box(house_address[0], house_address[1], 2000)
         if self.main_employment > 0:
             if self.main_employment == 1:
                 employment_str = "office"
@@ -215,14 +203,10 @@ class Person:
                 employment_str = "university"
 
             if len(all_nodes[employment_str]) != 0:
-                i = np.random.choice(
-                    range(len(all_nodes[employment_str])), 1
-                    )[0]
+                i = np.random.choice(range(len(all_nodes[employment_str])), 1)[0]
 
                 while all_nodes[employment_str][i] == house_address:
-                    i = np.random.choice(
-                        range(len(all_nodes[employment_str])), 1
-                        )[0]
+                    i = np.random.choice(range(len(all_nodes[employment_str])), 1)[0]
 
                 self.office_address = all_nodes[employment_str][i]
 
@@ -254,20 +238,17 @@ class Person:
                 ).tolist()
                 places_selected = [
                     (place[0], place[1])
-                    for place
-                    in np.array(all_nodes[possible_exit])[random_places]
+                    for place in np.array(all_nodes[possible_exit])[random_places]
                 ]
                 if house_address in places_selected:
                     places_selected = [
                         pl for pl in places_selected if pl != house_address
                     ]
-                    r_id = np.random.choice(
-                        range(len(all_nodes[possible_exit])), 1
-                        )[0]
+                    r_id = np.random.choice(range(len(all_nodes[possible_exit])), 1)[0]
                     while r_id in random_places:
                         r_id = np.random.choice(
                             range(len(all_nodes[possible_exit])), 1
-                            )[0]
+                        )[0]
                     place = all_nodes[possible_exit][r_id]
                     places_selected.append((place[0], place[1]))
 
@@ -285,8 +266,7 @@ class Person:
 
             distances = [
                 great_circle_dist(
-                    house_address[0], house_address[1],
-                    place[0], place[1]
+                    house_address[0], house_address[1], place[0], place[1]
                 )
                 for place in getattr(self, possible_exit + "_places")
             ]
@@ -294,9 +274,7 @@ class Person:
             setattr(
                 self,
                 possible_exit + "_places_ordered",
-                np.array(
-                    getattr(self, possible_exit + "_places")
-                    )[order].tolist(),
+                np.array(getattr(self, possible_exit + "_places"))[order].tolist(),
             )
 
         # remove all exits which have no places nearby
@@ -373,9 +351,7 @@ class Person:
 
         if self.main_employment > 0 and self.office_address != "":
             no_office_days = np.random.binomial(5, active_status / 10)
-            self.office_days = np.random.choice(
-                range(5), no_office_days, replace=False
-                )
+            self.office_days = np.random.choice(range(5), no_office_days, replace=False)
             self.office_days.sort()
 
     def update_preferred_exits(self, exit_code: str):
@@ -422,8 +398,7 @@ class Person:
             selected_location: tuple, selected location's coordinates
         """
 
-        probs_of_staying_home = [1 - self.active_status / 10,
-                                 self.active_status / 10]
+        probs_of_staying_home = [1 - self.active_status / 10, self.active_status / 10]
         if np.random.choice([0, 1], 1, p=probs_of_staying_home)[0] == 0:
             return "home", self.house_address
 
@@ -490,18 +465,12 @@ class Person:
             str, exit selected
         """
 
-        chosen_exit_index = np.random.choice(
-            range(len(self.office_exits)), 1
-            )[0]
+        chosen_exit_index = np.random.choice(range(len(self.office_exits)), 1)[0]
         chosen_exit = self.office_exits[chosen_exit_index]
         self.update_preferred_exits(self.office_codes[chosen_exit_index])
 
-        go_path, _ = self.calculate_trip(
-            self.office_address, chosen_exit, api_key
-            )
-        return_path, _ = self.calculate_trip(
-            chosen_exit, self.office_address, api_key
-            )
+        go_path, _ = self.calculate_trip(self.office_address, chosen_exit, api_key)
+        return_path, _ = self.calculate_trip(chosen_exit, self.office_address, api_key)
 
         return go_path, return_path, self.office_codes[chosen_exit_index]
 
@@ -551,8 +520,7 @@ class Person:
             path = self.trips[coords_str]
         else:
             path, _ = get_path(
-                origin[0], origin[1], destination[0], destination[1],
-                transport, api_key
+                origin[0], origin[1], destination[0], destination[1], transport, api_key
             )
             path = get_basic_path(path, transport)
 
@@ -581,37 +549,17 @@ class Person:
 
         if time_now == 0:
             if day_now < 5 and self.main_employment > 0:
-                return (
-                    "p",
-                    self.house_address,
-                    [8 * 3600, 9 * 3600],
-                    "home_morning"
-                    )
+                return ("p", self.house_address, [8 * 3600, 9 * 3600], "home_morning")
 
-            return (
-                "p",
-                self.house_address,
-                [8 * 3600, 12 * 3600],
-                "home_morning"
-                )
+            return ("p", self.house_address, [8 * 3600, 12 * 3600], "home_morning")
 
         if not self.office_today:
             if update:
                 self.office_today = not self.office_today
             if day_now in self.office_days:
-                return (
-                    "fpf",
-                    self.office_address,
-                    [7 * 3600, 9 * 3600],
-                    "office"
-                    )
+                return ("fpf", self.office_address, [7 * 3600, 9 * 3600], "office")
             elif day_now < 5:
-                return (
-                    "p",
-                    self.house_address,
-                    [7 * 3600, 9 * 3600],
-                    "office_home"
-                    )
+                return ("p", self.house_address, [7 * 3600, 9 * 3600], "office_home")
 
         preferred_exit, location = self.choose_preferred_exit(t_s, update)
 
@@ -623,10 +571,7 @@ class Person:
                     [24 * 3600 - time_now, 24 * 3600 - time_now],
                     "home_night",
                 )
-            return (
-                "p", self.house_address,
-                [0.5 * 3600, 2 * 3600], preferred_exit
-                )
+            return ("p", self.house_address, [0.5 * 3600, 2 * 3600], preferred_exit)
         elif preferred_exit == "home_night":
             return (
                 "p_night",
@@ -676,10 +621,7 @@ def gen_basic_traj(
         r_spd = np.random.uniform(spd_range[0], spd_range[1], 1)[0]
         r_time = int(np.around(np.random.uniform(30, 120, 1), 0))
         mov = r_spd * r_time
-        if (
-            traveled + mov > distance
-            or distance - traveled - mov < spd_range[1]
-        ):
+        if traveled + mov > distance or distance - traveled - mov < spd_range[1]:
             mov = distance - traveled
             r_time = int(np.around(mov / r_spd, 0))
         traveled = traveled + mov
@@ -708,20 +650,15 @@ def gen_basic_traj(
                 traj_list.append(newline)
             t_s = t_e
     traj_array = np.array(traj_list)
-    err_lat = np.random.normal(
-        loc=0.0, scale=2 * 1e-5, size=traj_array.shape[0]
-        )
-    err_lon = np.random.normal(
-        loc=0.0, scale=2 * 1e-5, size=traj_array.shape[0]
-        )
+    err_lat = np.random.normal(loc=0.0, scale=2 * 1e-5, size=traj_array.shape[0])
+    err_lon = np.random.normal(loc=0.0, scale=2 * 1e-5, size=traj_array.shape[0])
     traj_array[:, 1] = traj_array[:, 1] + err_lat
     traj_array[:, 2] = traj_array[:, 2] + err_lon
     return traj_array, distance
 
 
 def gen_basic_pause(
-    l_s: tuple[float], t_s: float,
-    t_e_range: list[float], t_diff_range: list[float]
+    l_s: tuple[float], t_s: float, t_e_range: list[float], t_diff_range: list[float]
 ) -> np.ndarray:
     """
     This function generates basic trajectories for a pause.\n
@@ -736,13 +673,11 @@ def gen_basic_pause(
     traj_list = []
     if t_e_range is None:
         r_time = int(
-            np.around(
-                np.random.uniform(t_diff_range[0], t_diff_range[1], 1), 0
-                )
+            np.around(np.random.uniform(t_diff_range[0], t_diff_range[1], 1), 0)
         )
     else:
         r_time = int(
-            np.around(np.random.uniform(t_e_range[0], t_e_range[1], 1), 0)-t_s
+            np.around(np.random.uniform(t_e_range[0], t_e_range[1], 1), 0) - t_s
         )
     std = 1 * 1e-5
     for i in range(r_time):
@@ -756,9 +691,7 @@ def gen_basic_pause(
     return traj_array
 
 
-def gen_route_traj(
-    route: list, vehicle: str, t_s: float
-) -> tuple[np.ndarray, float]:
+def gen_route_traj(route: list, vehicle: str, t_s: float) -> tuple[np.ndarray, float]:
     """
     This function generates basic trajectories between multiple points.\n
     Args:
@@ -869,7 +802,7 @@ def gen_all_traj(
         current_weekdate = current_date.weekday()
         action, location, limits, chosen_exit = person.choose_action(
             t_s, current_weekdate
-            )
+        )
 
         if action == "p":
 
@@ -904,9 +837,7 @@ def gen_all_traj(
             traj2 = res1
             d_temp += distance1
 
-            office_exit = np.random.binomial(
-                1, person.travelling_status / 10, 1
-                )
+            office_exit = np.random.binomial(1, person.travelling_status / 10, 1)
             if (
                 chosen_exit == "office"
                 and len(person.office_codes) != 0
@@ -922,9 +853,7 @@ def gen_all_traj(
                 t_s_list.append(t_s2)
                 traj2 = np.vstack((traj2, res2))
 
-                go_path2, return_path2, _ = person.choose_preferred_office_exit(
-                    api_key
-                    )
+                go_path2, return_path2, _ = person.choose_preferred_office_exit(api_key)
                 # Flight 1.1
                 res3, d11 = gen_route_traj(go_path2, "foot", t_s2)
                 t_s3 = res3[-1, 0]
@@ -932,9 +861,7 @@ def gen_all_traj(
                 traj2 = np.vstack((traj2, res3))
 
                 # Pause 2
-                res4 = gen_basic_pause(
-                    return_path2[0], t_s3, None, [15 * 60, 60 * 60]
-                    )
+                res4 = gen_basic_pause(return_path2[0], t_s3, None, [15 * 60, 60 * 60])
                 t_s4 = res4[-1, 0]
                 t_s_list.append(t_s4)
                 traj2 = np.vstack((traj2, res4))
@@ -948,8 +875,7 @@ def gen_all_traj(
                 # Pause 3
                 rndm_coefficient2 = 1 - rndm_coefficient
                 limits3 = [
-                    max(lim * rndm_coefficient2 - (t_s5 - t_s2), 0)
-                    for lim in limits
+                    max(lim * rndm_coefficient2 - (t_s5 - t_s2), 0) for lim in limits
                 ]
                 res6 = gen_basic_pause(location, t_s5, None, limits3)
                 t_s6 = res6[-1, 0]
@@ -1004,9 +930,7 @@ def gen_all_traj(
                     location3[1],
                 ):
                     update_exit = True
-                    go_path3, _ = person.calculate_trip(
-                        location, location3, api_key
-                        )
+                    go_path3, _ = person.calculate_trip(location, location3, api_key)
                     return_path3, _ = person.calculate_trip(
                         location3, person.house_address, api_key
                     )
@@ -1032,10 +956,7 @@ def gen_all_traj(
                     d_temp += d21 + d22
 
             dates_passed_in_hrs = (current_date - start_date).days * 24 * 3600
-            if (
-                t_s_list[-1] - dates_passed_in_hrs < 24 * 3600
-                and update_exit
-            ):
+            if t_s_list[-1] - dates_passed_in_hrs < 24 * 3600 and update_exit:
                 person.update_preferred_exits(exit3)
 
                 t_s = t_s_list[-1]
@@ -1112,9 +1033,7 @@ def remove_data(
     return obs_data
 
 
-def prepare_data(
-    obs: np.ndarray, timestamp_s: int, tz_str: str
-) -> pd.DataFrame:
+def prepare_data(obs: np.ndarray, timestamp_s: int, tz_str: str) -> pd.DataFrame:
     """
     Perpares the data in a dataframe.\n
     Args:
@@ -1225,10 +1144,7 @@ def process_attributes(
         if attributes[key]["active_status"] in range(11):
             pass
         else:
-            print(
-                "For User "
-                + str(user)
-                + " active_status was not in between 0-10")
+            print("For User " + str(user) + " active_status was not in between 0-10")
             return []
         attrs.append(attributes[key]["active_status"])
     else:
@@ -1239,9 +1155,7 @@ def process_attributes(
             pass
         else:
             print(
-                "For User "
-                + str(user)
-                + " travelling_status was not in between 0-10"
+                "For User " + str(user) + " travelling_status was not in between 0-10"
             )
             return []
         attrs.append(attributes[key]["travelling_status"])
@@ -1262,9 +1176,7 @@ def process_attributes(
                 )
 
         preferred_exits = attributes[key]["preferred_exits"]
-        possible_exits2 = [
-            x for x in possible_exits_list if x not in preferred_exits
-            ]
+        possible_exits2 = [x for x in possible_exits_list if x not in preferred_exits]
 
         random_exits = np.random.choice(
             possible_exits2, 3 - len(preferred_exits), replace=False
@@ -1274,9 +1186,7 @@ def process_attributes(
 
         attrs.append(preferred_exits)
     else:
-        attrs.append(
-            np.random.choice(possible_exits_list, 3, replace=False).tolist()
-            )
+        attrs.append(np.random.choice(possible_exits_list, 3, replace=False).tolist())
 
     for x in attributes[key].keys():
         key_list = x.split("-")
@@ -1324,7 +1234,7 @@ def sim_gps_data(
     switches_dictionary = {}
 
     if attributes_dir is not None:
-        with open(attributes_dir, encoding='utf-8') as json_file:
+        with open(attributes_dir, encoding="utf-8") as json_file:
             attributes = json.load(json_file)
 
         for key in attributes.keys():
@@ -1357,9 +1267,7 @@ def sim_gps_data(
                 np.random.choice(range(3), 1)[0],
                 np.random.choice(range(11), 1)[0],
                 np.random.choice(range(11), 1)[0],
-                np.random.choice(
-                    possible_exits_list, 3, replace=False
-                    ).tolist(),
+                np.random.choice(possible_exits_list, 3, replace=False).tolist(),
             ]
         if user not in switches_dictionary.keys():
             switches_dictionary[user] = {}
@@ -1440,8 +1348,7 @@ def sim_gps_data(
 
     timestamp_s = (
         datetime2stamp(
-            [start_date.year, start_date.month, start_date.day, 0, 0, 0],
-            tz_str
+            [start_date.year, start_date.month, start_date.day, 0, 0, 0], tz_str
         )
         * 1000
     )
@@ -1461,9 +1368,7 @@ def sim_gps_data(
         if attrs[1] == 1:
             q_employment = "node" + str(house_area) + '["office"];'
         elif attrs[1] == 2:
-            house_area2 = bounding_box(
-                house_address[0], house_address[1], 3000
-                )
+            house_area2 = bounding_box(house_address[0], house_address[1], 3000)
             q_employment = (
                 "node"
                 + str(house_area2)
@@ -1501,9 +1406,7 @@ def sim_gps_data(
         overpass_url = "http://overpass-api.de/api/interpreter"
 
         for try_no in range(3):
-            response = requests.get(
-                overpass_url, params={"data": q}, timeout=5 * 60
-                )
+            response = requests.get(overpass_url, params={"data": q}, timeout=5 * 60)
             if try_no == 3:
                 print_msg = "Too many Overpass requests in a short time."
                 print_msg += " Please try again in a minute."
@@ -1590,10 +1493,7 @@ def sim_gps_data(
                 s_lower += j * 60 * 60 * 1000
                 s_upper = s_lower + 60 * 60 * 1000
                 temp = obs_pd[
-                    (
-                        (obs_pd["timestamp"] >= s_lower)
-                        & (obs_pd["timestamp"] < s_upper)
-                        )
+                    ((obs_pd["timestamp"] >= s_lower) & (obs_pd["timestamp"] < s_upper))
                 ]
                 [y, m, d, h, _, _] = stamp2datetime(s_lower / 1000, "UTC")
                 filename = (
