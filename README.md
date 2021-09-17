@@ -89,10 +89,10 @@ time_end = None
 beiwe_id = None
 parameters = None
 all_memory_dict = None
-all_BV_set= None
+all_bv_set= None
 
 # 3. Impute location data and generate mobility summary metrics using the simulated data above
-gps_stats_main(path_to_synthetic_gps_data, path_to_gps_summary, tz_str, option, save_traj, places_of_interest, save_log, threshold, split_day_night, time_start, time_end, beiwe_id, parameters, all_memory_dict, all_BV_set)
+gps_stats_main(path_to_synthetic_gps_data, path_to_gps_summary, tz_str, option, save_traj, places_of_interest, save_log, threshold, split_day_night, time_start, time_end, beiwe_id, parameters, all_memory_dict, all_bv_set)
 
 # 4. Generate daily summary metrics for call/text logs
 log_stats_main(path_to_synthetic_log_data, path_to_log_summary, tz_str, option, time_start, time_end, beiwe_id)
