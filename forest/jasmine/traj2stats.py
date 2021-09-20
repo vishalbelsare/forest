@@ -8,12 +8,15 @@ import sys
 import pickle
 import time
 import json
+from functools import partial
 import numpy as np
 import pandas as pd
 import requests
+import pyproj
+from shapely.ops import transform
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
-from ..bonsai.simulate_gps_data import boundingBox
+from ..bonsai.simulate_gps_data import bounding_box
 from ..poplar.legacy.common_funcs import (
     stamp2datetime,
     datetime2stamp,
@@ -28,6 +31,45 @@ from .data2mobmat import (
 )
 from .mobmat2traj import num_sig_places, locate_home, ImputeGPS, Imp2traj
 from .sogp_gps import BV_select
+
+
+def transform_point_to_circle(
+    coords,
+    radius,
+):
+    """
+    This function transforms a set of cooordinates to a shapely
+    circle with a provided radius.
+    Args:
+        coords: list, [lattitude, longitude]
+        radius: float, in meters
+    Return:
+        shapely polygon of a circle
+    """
+
+    lat, lon = coords
+
+    local_azimuthal_projection = (
+        "+proj=aeqd +R=6371000 +units=m +lat_0={} +lon_0={}".format(lat, lon)
+    )
+    wgs84_to_aeqd = partial(
+        pyproj.transform,
+        pyproj.Proj("+proj=longlat +datum=WGS84 +no_defs"),
+        pyproj.Proj(local_azimuthal_projection),
+    )
+    aeqd_to_wgs84 = partial(
+        pyproj.transform,
+        pyproj.Proj(local_azimuthal_projection),
+        pyproj.Proj("+proj=longlat +datum=WGS84 +no_defs"),
+    )
+
+    center = Point(float(lat), float(lon))
+    point_transformed = transform(wgs84_to_aeqd, center)
+    buffer = point_transformed.buffer(radius)
+    # Get the polygon with lat lon coordinates
+    circle_poly = transform(aeqd_to_wgs84, buffer)
+
+    return circle_poly
 
 
 def gps_summaries(
@@ -92,7 +134,7 @@ def gps_summaries(
         query = "[out:json];\n("
 
         for i, _ in enumerate(lat):
-            bbox = boundingBox(lat[i], lon[i], 1000)
+            bbox = bounding_box(lat[i], lon[i], 1000)
 
             query += "\n\tnode" + str(bbox) + "['leisure'];"
             query += "\n\tway" + str(bbox) + "['leisure'];"
@@ -209,15 +251,23 @@ def gps_summaries(
                 current_time_list3 = current_time_list.copy()
                 current_time_list2[3] = 8
                 current_time_list3[3] = 20
-                t2 = datetime2stamp(current_time_list2, tz_str)
-                t3 = datetime2stamp(current_time_list3, tz_str)
+                start_time2 = datetime2stamp(current_time_list2, tz_str)
+                end_time2 = datetime2stamp(current_time_list3, tz_str)
                 if i % 2 == 0:
                     # datetime
-                    index_rows = (traj[:, 3] <= t3) * (traj[:, 6] >= t2)
+                    index_rows = (traj[:, 3] <= end_time2) * (traj[:, 6] >= start_time2)
                 else:
                     # nighttime
-                    index1 = (traj[:, 6] < t2) * (traj[:, 3] < end_time) * (traj[:, 6] > start_time)
-                    index2 = (traj[:, 3] > t3) * (traj[:, 3] < end_time) * (traj[:, 6] > start_time)
+                    index1 = (
+                        (traj[:, 6] < start_time2)
+                        * (traj[:, 3] < end_time)
+                        * (traj[:, 6] > start_time)
+                    )
+                    index2 = (
+                        (traj[:, 3] > end_time2)
+                        * (traj[:, 3] < end_time)
+                        * (traj[:, 6] > start_time)
+                    )
                     stop1 = sum(index1) - 1
                     stop2 = sum(index1)
                     index_rows = index1 + index2
@@ -227,8 +277,8 @@ def gps_summaries(
             # cut the trajs at two ends proportionally
             if i2 not in (0, no_windows - 1):
                 if split_day_night and i % 2 == 0:
-                    t0_temp = t2
-                    t1_temp = t3
+                    t0_temp = start_time2
+                    t1_temp = end_time2
                 else:
                     t0_temp = start_time
                     t1_temp = end_time
@@ -248,8 +298,8 @@ def gps_summaries(
                     temp[0, 6] = t1_temp
                 else:
                     if split_day_night and i % 2 != 0:
-                        t0_temp = [start_time, t3]
-                        t1_temp = [t2, end_time]
+                        t0_temp = [start_time, end_time2]
+                        t1_temp = [start_time2, end_time]
                         start_temp = [0, stop2]
                         end_temp = [stop1, -1]
                         for j in range(2):
@@ -299,8 +349,8 @@ def gps_summaries(
             total_flight_time = sum(flight_t_vec)
             dist_traveled = sum(mov_vec)
             # Locations of importance
-            log_tags_temp = []
             if places_of_interest is not None or save_log:
+                log_tags_temp = []
                 pause_vec = temp[temp[:, 0] == 2]
                 pause_array = np.array([])
                 for row in pause_vec:
@@ -330,40 +380,58 @@ def gps_summaries(
                                 <= 5,
                                 -1,
                             ] += (row[6] - row[3]) / 60
-                all_place_times_temp = [0 for _ in range(len(places_of_interest) + 1)]
+                all_place_times = [0 for _ in range(len(places_of_interest) + 1)]
+                all_place_times_adjusted = all_place_times[:-1]
 
                 for pause_index, _ in enumerate(pause_array):
                     row = pause_array[pause_index]
                     if places_of_interest is not None:
+                        all_place_probs = [0 for _, _ in enumerate(places_of_interest)]
+                        pause_circle = transform_point_to_circle([row[0], row[1]], 2)
                         add_to_other = True
                         for j, _ in enumerate(places_of_interest):
                             place = places_of_interest[j]
                             if place in ids.keys():
                                 for element_id in ids[place]:
                                     if len(locations[element_id]) == 1:
-                                        if (
-                                            great_circle_dist(
-                                                row[0],
-                                                row[1],
+                                        location_circle = transform_point_to_circle(
+                                            [
                                                 locations[element_id][0][0],
                                                 locations[element_id][0][1],
-                                            )
-                                            < 7.5
-                                        ):
-                                            all_place_times_temp[j] += row[2] / 60
+                                            ],
+                                            7.5,
+                                        )
+
+                                        intersection_area = pause_circle.intersection(
+                                            location_circle
+                                        ).area
+                                        if intersection_area > 0:
+                                            all_place_probs[j] += intersection_area
                                             add_to_other = False
-                                            break
+
                                     elif len(locations[element_id]) >= 3:
                                         polygon = Polygon(locations[element_id])
-                                        point = Point(row[0], row[1])
-                                        if polygon.contains(point):
-                                            all_place_times_temp[j] += row[2] / 60
+
+                                        intersection_area = pause_circle.intersection(
+                                            polygon
+                                        ).area
+                                        if intersection_area > 0:
+                                            all_place_probs[j] += intersection_area
                                             add_to_other = False
-                                            break
 
                         # in case of pause not in places of interest
                         if add_to_other:
-                            all_place_times_temp[-1] += row[2] / 60
+                            all_place_times[-1] += row[2] / 60
+                        else:
+                            all_place_probs = np.array(all_place_probs) / sum(
+                                all_place_probs
+                            )
+                            chosen_type = np.argmax(all_place_probs)
+                            all_place_times[chosen_type] += row[2] / 60
+                            for h, _ in enumerate(all_place_probs):
+                                all_place_times_adjusted[h] += (
+                                    all_place_probs[h] * row[2] / 60
+                                )
 
                     if save_log:
                         if threshold is None:
@@ -429,7 +497,7 @@ def gps_summaries(
                         np.nan,
                     ]
                     if places_of_interest is not None:
-                        for p in range(len(places_of_interest) + 1):
+                        for p in range(2 * len(places_of_interest) + 1):
                             res.append(np.nan)
                     summary_stats.append(res)
                     log_tags[
@@ -462,7 +530,8 @@ def gps_summaries(
                         sd_p_dur / 60,
                     ]
                     if places_of_interest is not None:
-                        res += all_place_times_temp
+                        res += all_place_times
+                        res += all_place_times_adjusted
                     log_tags[
                         str(day)
                         + "/"
@@ -539,7 +608,7 @@ def gps_summaries(
                         np.nan,
                     ]
                     if places_of_interest is not None:
-                        for p in range(len(places_of_interest) + 1):
+                        for p in range(2 * len(places_of_interest) + 1):
                             res.append(np.nan)
                     summary_stats.append(res)
                     log_tags[str(day) + "/" + str(month) + "/" + str(year)] = np.nan
@@ -568,7 +637,8 @@ def gps_summaries(
                         sd_p_dur / 3600,
                     ]
                     if places_of_interest is not None:
-                        res += all_place_times_temp
+                        res += all_place_times
+                        res += all_place_times_adjusted
                     summary_stats.append(res)
                     if split_day_night:
                         if i % 2 == 0:
@@ -591,61 +661,14 @@ def gps_summaries(
         summary_stats = pd.DataFrame(np.array(summary_stats))
         if places_of_interest is None:
             places_of_interest2 = []
+            places_of_interest3 = []
         else:
             places_of_interest2 = places_of_interest.copy()
             places_of_interest2.append("other")
+            places_of_interest3 = [pl + "_adjusted" for pl in places_of_interest]
         if option == "hourly":
-            summary_stats.columns = [
-                "year",
-                "month",
-                "day",
-                "hour",
-                "obs_duration",
-                "home_time",
-                "dist_traveled",
-                "max_dist_home",
-                "total_flight_time",
-                "av_flight_length",
-                "sd_flight_length",
-                "av_flight_duration",
-                "sd_flight_duration",
-                "total_pause_time",
-                "av_pause_duration",
-                "sd_pause_duration",
-            ] + places_of_interest2
-        if option == "daily":
-            summary_stats.columns = [
-                "year",
-                "month",
-                "day",
-                "obs_duration",
-                "obs_day",
-                "obs_night",
-                "home_time",
-                "dist_traveled",
-                "max_dist_home",
-                "radius",
-                "diameter",
-                "num_sig_places",
-                "entropy",
-                "total_flight_time",
-                "av_flight_length",
-                "sd_flight_length",
-                "av_flight_duration",
-                "sd_flight_duration",
-                "total_pause_time",
-                "av_pause_duration",
-                "sd_pause_duration",
-            ] + places_of_interest2
-    else:
-        if places_of_interest is None:
-            places_of_interest2 = []
-        else:
-            places_of_interest2 = places_of_interest.copy()
-            places_of_interest2.append("other")
-        if option == "hourly":
-            summary_stats = pd.DataFrame(
-                columns=[
+            summary_stats.columns = (
+                [
                     "year",
                     "month",
                     "day",
@@ -664,10 +687,11 @@ def gps_summaries(
                     "sd_pause_duration",
                 ]
                 + places_of_interest2
+                + places_of_interest3
             )
         if option == "daily":
-            summary_stats = pd.DataFrame(
-                columns=[
+            summary_stats.columns = (
+                [
                     "year",
                     "month",
                     "day",
@@ -691,6 +715,70 @@ def gps_summaries(
                     "sd_pause_duration",
                 ]
                 + places_of_interest2
+                + places_of_interest3
+            )
+    else:
+        if places_of_interest is None:
+            places_of_interest2 = []
+            places_of_interest3 = []
+        else:
+            places_of_interest2 = places_of_interest.copy()
+            places_of_interest2.append("other")
+            places_of_interest3 = [pl + "_adjusted" for pl in places_of_interest]
+        if option == "hourly":
+            summary_stats = pd.DataFrame(
+                columns=(
+                    [
+                        "year",
+                        "month",
+                        "day",
+                        "hour",
+                        "obs_duration",
+                        "home_time",
+                        "dist_traveled",
+                        "max_dist_home",
+                        "total_flight_time",
+                        "av_flight_length",
+                        "sd_flight_length",
+                        "av_flight_duration",
+                        "sd_flight_duration",
+                        "total_pause_time",
+                        "av_pause_duration",
+                        "sd_pause_duration",
+                    ]
+                    + places_of_interest2
+                    + places_of_interest3
+                )
+            )
+        if option == "daily":
+            summary_stats = pd.DataFrame(
+                columns=(
+                    [
+                        "year",
+                        "month",
+                        "day",
+                        "obs_duration",
+                        "obs_day",
+                        "obs_night",
+                        "home_time",
+                        "dist_traveled",
+                        "max_dist_home",
+                        "radius",
+                        "diameter",
+                        "num_sig_places",
+                        "entropy",
+                        "total_flight_time",
+                        "av_flight_length",
+                        "sd_flight_length",
+                        "av_flight_duration",
+                        "sd_flight_duration",
+                        "total_pause_time",
+                        "av_pause_duration",
+                        "sd_pause_duration",
+                    ]
+                    + places_of_interest2
+                    + places_of_interest3
+                )
             )
 
     if split_day_night:
@@ -957,7 +1045,9 @@ def gps_stats_main(
                             "t1",
                             "obs",
                         ]
-                        dest_path = output_folder + "/trajectory/" + str(id_code) + ".csv"
+                        dest_path = (
+                            output_folder + "/trajectory/" + str(id_code) + ".csv"
+                        )
                         pd_traj.to_csv(dest_path, index=False)
                     if option == "both":
                         summary_stats1, logs1 = gps_summaries(
