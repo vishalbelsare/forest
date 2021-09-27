@@ -725,7 +725,7 @@ def gen_route_traj(route: list, vehicle: str, t_s: float) -> tuple[np.ndarray, f
 
 
 def gen_all_traj(
-    house_address: str,
+    house_address: tuple,
     attributes: list,
     switches: dict,
     all_nodes: dict,
