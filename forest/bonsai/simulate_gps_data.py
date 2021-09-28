@@ -398,9 +398,6 @@ class Person:
             selected_location: tuple, selected location's coordinates
         """
 
-        probs_of_staying_home = [1 - self.active_status / 10, self.active_status / 10]
-        if np.random.choice([0, 1], 1, p=probs_of_staying_home)[0] == 0:
-            return "home", self.house_address
 
         time_now = t_s % (24 * 60 * 60)
         hr_now = time_now / (60 * 60)
@@ -411,6 +408,10 @@ class Person:
             return "home", self.house_address
         elif hr_now > 22 - active_coef:
             return "home_night", self.house_address
+
+        probs_of_staying_home = [1 - self.active_status / 10, self.active_status / 10]
+        if np.random.choice([0, 1], 1, p=probs_of_staying_home)[0] == 0:
+            return "home", self.house_address
 
         possible_exits2 = self.possible_exits.copy()
 
