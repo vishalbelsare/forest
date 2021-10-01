@@ -34,9 +34,9 @@ from .sogp_gps import BV_select
 
 
 def transform_point_to_circle(
-    coords,
-    radius,
-):
+    coords: list,
+    radius: int,
+) -> Polygon:
     """
     This function transforms a set of cooordinates to a shapely
     circle with a provided radius.
@@ -73,14 +73,16 @@ def transform_point_to_circle(
 
 
 def gps_summaries(
-    traj,
-    tz_str,
-    option,
-    places_of_interest=None,
-    save_log=False,
-    threshold=None,
-    split_day_night=False,
-):
+    traj: np.ndarray,
+    tz_str: str,
+    option: str,
+    places_of_interest: list = None,
+    save_log: bool = False,
+    threshold: int = None,
+    split_day_night: bool = False,
+    person_point_radius: float = 2,
+    place_point_radius: float = 7.5,
+) -> tuple[pd.DataFrame, dict]:
     """
     This function derives summary statistics from the imputed trajectories
     if the option is hourly, it returns
@@ -107,6 +109,10 @@ def gps_summaries(
           split_day_night, bool, True if you want to split all metrics to
             datetime and nighttime patterns
           only for daily option
+          person_point_radius, float, radius of the person's circle when
+            discovering places near him in pauses
+          place_point_radius, float, radius of place's circle
+            when place is returned as centre coordinates from osm
     Return: a pd dataframe, with each row as an hour/day,
              and each col as a feature/stat
             a dictionary, contains log of tags of all locations visited
@@ -272,6 +278,18 @@ def gps_summaries(
                     stop2 = sum(index1)
                     index_rows = index1 + index2
 
+            if sum(index_rows) == 0 and split_day_night:
+                res = [
+                    year,
+                    month,
+                    day,
+                ]
+                res += [0 for _ in range(18)]
+                if places_of_interest is not None:
+                    res += [0 for _ in range(2 * len(places_of_interest) + 1)]
+                summary_stats.append(res)
+                continue
+
             temp = traj[index_rows, :]
             # take a subset which is exactly one hour/day,
             # cut the trajs at two ends proportionally
@@ -387,7 +405,9 @@ def gps_summaries(
                     row = pause_array[pause_index]
                     if places_of_interest is not None:
                         all_place_probs = [0 for _, _ in enumerate(places_of_interest)]
-                        pause_circle = transform_point_to_circle([row[0], row[1]], 2)
+                        pause_circle = transform_point_to_circle(
+                            [row[0], row[1]], person_point_radius
+                        )
                         add_to_other = True
                         for j, _ in enumerate(places_of_interest):
                             place = places_of_interest[j]
@@ -399,7 +419,7 @@ def gps_summaries(
                                                 locations[element_id][0][0],
                                                 locations[element_id][0][1],
                                             ],
-                                            7.5,
+                                            place_point_radius,
                                         )
 
                                         intersection_area = pause_circle.intersection(
@@ -451,7 +471,7 @@ def gps_summaries(
                                         great_circle_dist(
                                             row[0], row[1], values[0][0], values[0][1]
                                         )
-                                        < 7.5
+                                        < place_point_radius
                                     ):
                                         log_tags_temp.append(tags[element_id])
                                 elif len(values) >= 3:
@@ -814,7 +834,7 @@ def gps_summaries(
     return summary_stats2, log_tags
 
 
-def gps_quality_check(study_folder, id_code):
+def gps_quality_check(study_folder: str, id_code: str) -> float:
     """
     The function checks the gps data quality.
     Args: both study_folder and id_code should be string
@@ -842,21 +862,23 @@ def gps_quality_check(study_folder, id_code):
 
 
 def gps_stats_main(
-    study_folder,
-    output_folder,
-    tz_str,
-    option,
-    save_traj,
-    places_of_interest=None,
-    save_log=False,
-    threshold=None,
-    split_day_night=False,
-    time_start=None,
-    time_end=None,
-    beiwe_id=None,
-    parameters=None,
-    all_memory_dict=None,
-    all_bv_set=None,
+    study_folder: str,
+    output_folder: str,
+    tz_str: str,
+    option: str,
+    save_traj: bool,
+    places_of_interest: list = None,
+    save_log: bool = False,
+    threshold: int = None,
+    split_day_night: bool = False,
+    person_point_radius: float = 2,
+    place_point_radius: float = 7.5,
+    time_start: list = None,
+    time_end: list = None,
+    beiwe_id: list = None,
+    parameters: list = None,
+    all_memory_dict: dict = None,
+    all_bv_set: dict = None,
 ):
     """
     This the main function to do the GPS imputation.
@@ -879,6 +901,10 @@ def gps_stats_main(
             split_day_night, bool, True if you want to split all metrics to
                 datetime and nighttime patterns
                 only for daily option
+            person_point_radius, float, radius of the person's circle when
+                discovering places near him in pauses
+            place_point_radius, float, radius of place's circle
+                when place is returned as centre coordinates from osm
             time_start, time_end are starting time and ending time of the
                 window of interest
                 time should be a list of integers with format
@@ -904,7 +930,7 @@ def gps_stats_main(
             and logger csv file to show warnings and bugs during the run
     """
 
-    if isinstance(places_of_interest, list) and places_of_interest is not None:
+    if not isinstance(places_of_interest, list) and places_of_interest is not None:
         sys.stdout.write("Places of interest need to be of list type")
         sys.exit()
 
@@ -1070,6 +1096,8 @@ def gps_stats_main(
                             save_log,
                             threshold,
                             split_day_night,
+                            person_point_radius,
+                            place_point_radius,
                         )
                         write_all_summaries(
                             id_code, summary_stats2, output_folder + "/daily"
@@ -1106,6 +1134,6 @@ def gps_stats_main(
                         + " or the data quality is too low."
                         + "\n"
                     )
-            except:
+            except Exception:
                 sys.stdout.write("An error occured when processing the data." + "\n")
                 break
