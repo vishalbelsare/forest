@@ -61,7 +61,7 @@ def get_path(
     api_str = "https://api.openrouteservice.org/v2/directions/"
     api_str += "{}?api_key={}&start={},{}&end={},{}"
 
-    for try_no in range(3):
+    for try_no in range(4):
 
         call = requests.get(
             api_str.format(transport, api_key, lon1, lat1, lon2, lat2),
@@ -1293,7 +1293,7 @@ def sim_gps_data(
         location_ctr, location_city, str(150)
     )
 
-    for try_no in range(3):
+    for try_no in range(4):
         if try_no == 3:
             print_msg = "Too many Overpass requests in a short time."
             print_msg += " Please try again in a minute."
@@ -1302,7 +1302,7 @@ def sim_gps_data(
         try:
             r = api.query(overpy_query)
             break
-        except overpy.exception.OverpassTooManyRequests:
+        except (overpy.exception.OverpassTooManyRequests, overpy.exception.OverpassGatewayTimeout):
             time.sleep(30)
 
     if len(r.nodes) == 0:
@@ -1316,7 +1316,7 @@ def sim_gps_data(
             location_ctr, location_city, str(100)
         )
 
-        for try_no in range(3):
+        for try_no in range(4):
             if try_no == 3:
                 print_msg = "Too many Overpass requests in a short time."
                 print_msg += " Please try again in a minute."
@@ -1325,7 +1325,7 @@ def sim_gps_data(
             try:
                 r = api.query(overpy_query)
                 break
-            except overpy.exception.OverpassTooManyRequests:
+            except (overpy.exception.OverpassTooManyRequests, overpy.exception.OverpassGatewayTimeout):
                 time.sleep(30)
 
     try:
@@ -1406,7 +1406,7 @@ def sim_gps_data(
 
         overpass_url = "http://overpass-api.de/api/interpreter"
 
-        for try_no in range(3):
+        for try_no in range(4):
             response = requests.get(overpass_url, params={"data": q}, timeout=5 * 60)
             if try_no == 3:
                 print_msg = "Too many Overpass requests in a short time."
