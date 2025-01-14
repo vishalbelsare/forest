@@ -1,11 +1,15 @@
 __pycache__/
+dist/
+beiwe_forest.egg-info/
+
+.vagrant/
+.venv/
+venv/
 .DS_Store
 
-# IntelliJ project files
-.idea
-
-# for installing Forest in editable mode when developing
-/forest.egg-info/
+# IntelliJ, VsCode project files
+.idea/
+.vscode/
 
 #We don't want to add data to github
 /tutorials/data/
@@ -18,3 +22,6 @@ __pycache__/
 
 #sphinx build
 docs/_build/
+
+# any python environment files
+.python-version

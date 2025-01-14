@@ -1,15 +1,14 @@
 [![build](https://github.com/onnela-lab/forest/actions/workflows/build.yml/badge.svg)](https://github.com/onnela-lab/forest/actions/workflows/build.yml)
 [![Documentation Status](https://readthedocs.org/projects/forest-docs/badge/)](https://forest.beiwe.org/en/latest/)
 
-<img width="264" height="99" src="forest-logo-color.png" alt="Forest logo">
+<!--- using a URL to display logo on PyPI --->
+<img width="264" height="99" src="https://raw.githubusercontent.com/onnela-lab/forest/main/forest-logo-color.png" alt="Forest logo">
 
-# Forest (Python 3.8)
-
-The Onnela Lab at the Harvard T.H. Chan School of Public Health has developed the Forest library to analyze smartphone-based high-throughput digital phenotyping data. The main intellectual challenge in smartphone-based digital phenotyping has moved from data collection to data analysis. Our research focuses on the development of mathematical and statistical methods for analyzing intensive high-dimensional data. We are actively developing the Forest library for analyzing smartphone-based high-throughput digital phenotyping data collected with the [Beiwe](https://github.com/onnela-lab/beiwe-backend) platform. Forest will implement our methods for analyzing Beiwe data as a Python 3.8 package and is released under the BSD-3 open-source license. The Forest library will continue to grow over the coming years as we develop new analytical methods.
+The Onnela Lab at the Harvard T.H. Chan School of Public Health has developed the Forest library to analyze smartphone-based high-throughput digital phenotyping data. The main intellectual challenge in smartphone-based digital phenotyping has moved from data collection to data analysis. Our research focuses on the development of mathematical and statistical methods for analyzing intensive high-dimensional data. We are actively developing the Forest library for analyzing smartphone-based high-throughput digital phenotyping data collected with the [Beiwe](https://github.com/onnela-lab/beiwe-backend) platform. Forest will implement our methods for analyzing Beiwe data as a Python package and is released under the BSD-3 open-source license. The Forest library will continue to grow over the coming years as we develop new analytical methods.
 
 Forest can be run locally but is also integrated into the Beiwe back-end on AWS, consistent with the preferred big-data computing paradigm of moving computation to the data. Integrated with Beiwe, Forest can be used to generate on-demand analytics, most importantly daily or hourly summary statistics of collected data, which are stored in a relational database on AWS. The system also implements an API for Tableau, which supports the creation of customizable workbooks and dashboards to view data summaries and troubleshoot any issues with data collection. Tableau is commercial software but is available under free viewer licenses and may be free to academic users for the first year (see Tableau for more information).
 
-For more detailed info on specific subpackages, see our [Documentation](https://forest.beiwe.org). Please note that Forest uses Python 3.8.
+For more detailed info on specific subpackages, see our [Documentation](https://forest.beiwe.org).
 
 # Description
 
@@ -32,13 +31,13 @@ Output: typically summary files
 
 # Usage
 
-To install, clone this repository to a local directory and then:
+Please note that Forest uses Python 3.11. To install, clone this repository to a local directory and then:
 
 ```console
 pip install path/to/forest
 ```
 
-Alternatively, [install directly from github](https://pip.pypa.io/en/stable/reference/pip_install/#git) with `pip`. As the repo is public, it won't prompt you to login. If you've used forest in the past, it might be prudent to do a '''pip uninstall forest''' first.
+Alternatively, [install directly from GitHub](https://pip.pypa.io/en/stable/cli/pip_install/#examples) with `pip`. As the repo is public, it won't prompt you to login. If you've used forest in the past, it might be prudent to do a `pip uninstall forest` first.
 
 ```console
 pip install git+https://github.com/onnela-lab/forest
@@ -48,7 +47,7 @@ To immediately test out forest, adapt the filepaths in the code below and run:
 
 ```python
 # Currently, all imports from `forest` must be explicit.  For the below example you need to import the following
-# In future, it would be great to have all functions import automatically
+# In the future, it would be great to have all functions import automatically
 import datetime
 
 from forest.bonsai.simulate_log_data import sim_log_data
@@ -116,10 +115,10 @@ sample_gps_data = sim_gps_data(n_persons, location, start_date, end_date, cycle,
 gps_to_csv(sample_gps_data, path_to_synthetic_gps_data, start_date, end_date)
 
 # 2. Specify parameters for imputation 
-# See https://github.com/onnela-lab/forest/wiki/Jasmine-documentation#input for details
+# See https://forest.beiwe.org/en/latest/jasmine.html for details
 # time zone where the study took place (assumes that all participants were always in this time zone)
 tz_str = "Etc/GMT-1"
-# Generate summary metrics Frequency.HOURLY, Frequency.DAILY or Frequency.HOURLY_AND_DAILY
+# Generate summary metrics e.g. Frequency.HOURLY, Frequency.DAILY or Frequency.HOURLY_AND_DAILY (see Frequency class in constants.py)
 frequency = Frequency.DAILY
 # Save imputed trajectories?
 save_traj = False
@@ -127,16 +126,23 @@ save_traj = False
 parameters = None
 # list of locations to track if visited, leave None if don't want these summary statistics
 places_of_interest = ['cafe', 'bar', 'hospital']
-# True if want to save a log of all locations and attributes of those locations visited
-save_log = True
-# threshold of time spent in a location to count as being in that location, in minutes
-threshold = 15
+# list of OpenStreetMap tags to use for identifying locations, leave None to default to amenity and leisure tagged locations or if you don't want to use OSM (see OSMTags class in constants.py)
+osm_tags = None
 
 # 3. Impute location data and generate mobility summary metrics using the simulated data above
-gps_stats_main(path_to_synthetic_gps_data, path_to_gps_summary, tz_str, frequency, save_traj, parameters, places_of_interest, save_log, threshold)
+gps_stats_main(
+    study_folder = path_to_synthetic_gps_data,
+    output_folder = path_to_gps_summary,
+    tz_str = tz_str,
+    frequency = frequency,
+    save_traj = save_traj,
+    parameters = parameters,
+    places_of_interest = places_of_interest,
+    osm_tags = osm_tags,
+)
 
 # 4. Generate daily summary metrics for call/text logs
-option = "daily"
+option = Frequency.DAILY
 time_start = None 
 time_end = None
 participant_ids = None
@@ -144,13 +150,14 @@ participant_ids = None
 log_stats_main(path_to_synthetic_log_data, path_to_log_summary, tz_str, option, time_start, time_end, participant_ids)
 ```
 
-## For contributors
-
 ## More info
+* [Beiwe platform for smartphone data collection](https://www.beiwe.org/)
+* [Onnela lab](https://www.hsph.harvard.edu/onnela-lab/)
 
-[Beiwe platform for smartphone data collection](https://www.beiwe.org/)
-[Onnela lab](https://www.hsph.harvard.edu/onnela-lab/)
-
-## Version
-
-Forest 1.0
+## Publications
+* Straczkiewicz, M., Huang, E.J., and Onnela, JP. A “one-size-fits-most” walking recognition method for smartphones, smartwatches, and wearable accelerometers. _npj Digit. Med._ **6**, 29 (2023) [![DOI](https://img.shields.io/badge/DOI-10.1038%2Fs41746--022--00745--z-blue)](https://doi.org/10.1038/s41746-022-00745-z) [Open Access](https://rdcu.be/c6dGV)
+* Huang E, Yan K, and Onnela JP. Smartphone-Based Activity Recognition Using Multistream Movelets Combining Accelerometer and Gyroscope Data. Sensors 22 (7), 2618 (2022) [![DOI](https://img.shields.io/badge/DOI-10.3390%2Fs22072618-blue)](https://doi.org/10.3390/s22072618)
+* Onnela JP, Dixon C, Griffin K, Jaenicke T, Minowada L, Esterkin S, Siu A, Zagorsky J, and Jones E. Beiwe: A data collection platform for high-throughput digital phenotyping. Journal of Open Source Software, 6(68), 3417 (2021) [![DOI](https://joss.theoj.org/papers/10.21105/joss.03417/status.svg)](https://doi.org/10.21105/joss.03417)
+* Liu G and Onnela JP. Bidirectional imputation of spatial GPS trajectories with missingness using sparse online Gaussian Process. Journal of the American Medical Informatics Association 28(8), 1777 (2021) [![DOI](https://img.shields.io/badge/DOI-10.1093%2Fjamia%2Focab069-blue)](https://doi.org/10.1093/jamia/ocab069)
+* Barnett I and Onnela JP. Inferring mobility measures from GPS with missing data. Biostatistics 21:2, e98, 2020 [![DOI](https://img.shields.io/badge/DOI-10.1093%2Fbiostatistics%2Fkxy059-blue)](https://doi.org/10.1093/biostatistics/kxy059) [Open Access](https://academic.oup.com/biostatistics/article/21/2/e98/5145908?guestAccessKey=0e3baa8c-2a80-405e-a7b4-1444099f48a2)
+* Huang E and Onnela JP. Augmented movelet method for activity classification using smartphone gyroscope and accelerometer data. Sensors 20(13), 3706, 2020 [![DOI](https://img.shields.io/badge/DOI-10.3390%2Fs20133706-blue)](https://doi.org/10.3390/s20133706) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3925679.svg)](https://doi.org/10.5281/zenodo.3925679)
