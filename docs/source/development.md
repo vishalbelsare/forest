@@ -4,11 +4,11 @@ Information for contributors
 
 ## Quick start
 * Change current directory to the top level of your local Forest repository
-* Install Forest in editable mode: `pip install -e .`
-* Install development tools: `pip install -r requirements.txt`
-* Run code style checks: `flake8`
-* Run type hint checks: `mypy -p forest`
-* Run test suite: `pytest`
+* Install Forest in editable mode along with development tools: `pip install -e ".[dev]"`
+* Check code style: `flake8`
+* Run static type checks: `mypy`
+* Run the test suite: `pytest`
+* Validate the citation file: `cffconvert -i CITATION.cff --validate`
 
 ### Documentation
 Install required dependencies:
@@ -44,6 +44,34 @@ Open `docs/_build/html/index.html` in a web browser to check the results
 * Use the [logging module](https://docs.python.org/3/library/logging.html) instead of `print()`
 * [Formatting log messages](http://reinout.vanrees.org/weblog/2015/06/05/logging-formatting.html): `logger.info("%s went %s wrong", 42, 'very')`
 * Continue writing code and comments all the way until the end of the line then indent appropriately
+* [Packaging Python Projects](https://packaging.python.org/en/latest/tutorials/packaging-projects)
+
+### Packaging and distribution
+
+#### Create a release
+* Update the version number in `pyproject.toml`
+* Update the changelog in `CHANGELOG.md`
+* Commit and push all local changes to GitHub
+* Merge the develop branch into the main branch
+* Create a tag for the release: `git tag -a v1.1.0 -m "Release 1.1.0"`
+* Push the tag to GitHub: `git push origin v1.1.0`
+* [Create a release on GitHub](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
+* Build and upload the distribution archives to Python Package Index (see below) 
+
+#### Upload to Python Package Index
+* Use [TestPyPI](https://test.pypi.org/) for testing that your package can be uploaded, downloaded, and installed correctly
+* [Register an account](https://test.pypi.org/account/register/)
+* [Create an API token](https://test.pypi.org/manage/account/#api-tokens) (setting the "Scope" to "Entire account")
+* [Add API token](https://packaging.python.org/en/latest/specifications/pypirc/#using-a-pypi-token) to your `$HOME/.pypirc` file
+* Clear the build directory: `rm -r dist`
+* Generate distribution archives: `python -m build`
+* Check the results: `twine check dist/*`
+* Upload distribution archives:
+  * TestPyPI: `twine upload --repository testpypi dist/*`
+  * PyPI: `twine upload dist/*`
+* Install from TestPyPI to verify:
+  * TestPyPI: `pip install --index-url https://test.pypi.org/simple/ --no-deps beiwe-forest`
+  * PyPI: `pip install beiwe-forest`
 
 ## GitHub
 
@@ -67,7 +95,7 @@ Development workflow:
 * If you need to update an existing PR simply add commits to the corresponding feature branch instead of creating a new separate PR
 * Make sure your PR has the latest changes from the develop branch and that it passes the [build process](https://github.com/onnela-lab/forest/actions/workflows/build.yml)
 
-How to create a PR:
+#### Create a PR
 1. Create a feature branch off the default branch: `git switch -c new-feature develop`
 1. Push the new feature branch upstream to GitHub: `git push --set-upstream origin new-feature`
 1. [Create a PR on GitHub](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request):
@@ -79,7 +107,7 @@ How to create a PR:
 1. [Re-request the review](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/requesting-a-pull-request-review) after each round of changes
 1. After the PR is merged delete the feature branch in your local repository: `git branch -d new-feature`
 
-How to review PR:
+#### Review a PR
 1. [Comment on proposed changes](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/commenting-on-a-pull-request)
 1. Resolve conversations when changes are addressed (either in code or comments)
 1. [Approve the PR](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/approving-a-pull-request-with-required-reviews)
